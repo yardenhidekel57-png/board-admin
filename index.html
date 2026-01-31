@@ -32,13 +32,16 @@
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVTF5tX1H1QRMtL6Wj0mrWirFsPZiAu1NzO7NyixfU5dAePRZzylQlVQxV-gQt7qtp/exec'; // שים לב להחליף לקישור שלך
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRkk7x_2EbkzPbfwobm_6pkOa7MkPrO1wLbra16MhG3tcXctjy5hYANA0jo3IS4kM/exec'; // שים לב להחליף לקישור שלך
 
        async function loadMessages() {
     const list = document.getElementById('messagesList');
     try {
         // הוספת No-Cache כדי למנוע טעינה של נתונים ישנים
-        const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
+       const res = await fetch(SCRIPT_URL, {
+    method: 'GET',
+    redirect: 'follow' // חשוב מאוד כדי לעקוף את ההפניות של גוגל
+});
         const data = await res.json();
         
         list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
@@ -92,5 +95,6 @@
     </script>
 </body>
 </html>
+
 
 
