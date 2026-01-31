@@ -34,27 +34,31 @@
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVTF5tX1H1QRMtL6Wj0mrWirFsPZiAu1NzO7NyixfU5dAePRZzylQlVQxV-gQt7qtp/exec'; // שים לב להחליף לקישור שלך
 
-        async function loadMessages() {
-            try {
-               const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
-                const data = await res.json();
-                const list = document.getElementById('messagesList');
-                list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
-                
-                data.forEach(msg => {
-                    list.innerHTML += `
-                        <div class="msg-item">
-                            <span class="msg-text">${msg.text}</span>
-                            <button class="del-btn" onclick="deleteMessage(${msg.id})">מחק</button>
-                        </div>
-                    `;
-                });
-                document.getElementById('status').innerText = "";
-            } catch (e) {
-                document.getElementById('status').innerText = "שגיאה בטעינה";
-            }
-        }
-
+       async function loadMessages() {
+    const list = document.getElementById('messagesList');
+    try {
+        // הוספת No-Cache כדי למנוע טעינה של נתונים ישנים
+        const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
+        const data = await res.json();
+        
+        list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
+        
+        data.forEach(msg => {
+            list.innerHTML += `
+                <div class="msg-item">
+                    <span class="msg-text">${msg.text}</span>
+                    <button class="del-btn" onclick="deleteMessage(${msg.id})">מחק</button>
+                </div>
+            `;
+        });
+        document.getElementById('status').innerText = "";
+    } catch (e) {
+        // אם יש שגיאה, ננסה להציג אותה כדי להבין מה קורה
+        console.error(e);
+        list.innerHTML = "שגיאה בחיבור לנתונים. וודא שהקישור תקין.";
+        document.getElementById('status').innerText = "שגיאת תקשורת";
+    }
+}
         async function sendUpdate() {
             const text = document.getElementById('msgInput').value;
             if(!text) return;
@@ -88,4 +92,5 @@
     </script>
 </body>
 </html>
+
 
