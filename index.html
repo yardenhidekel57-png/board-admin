@@ -34,14 +34,40 @@
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRkk7x_2EbkzPbfwobm_6pkOa7MkPrO1wLbra16MhG3tcXctjy5hYANA0jo3IS4kM/exec'; // שים לב להחליף לקישור שלך
 
-       async function loadMessages() {
+   async function loadMessages() {
     const list = document.getElementById('messagesList');
     try {
-        // הוספת No-Cache כדי למנוע טעינה של נתונים ישנים
-       const res = await fetch(SCRIPT_URL, {
-    method: 'GET',
-    redirect: 'follow' // חשוב מאוד כדי לעקוף את ההפניות של גוגל
-});
+        const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
+        
+        // בדיקה אם התקבלה תשובה תקינה
+        if (!res.ok) throw new Error('Network error');
+        
+        const data = await res.json();
+        
+        // בדיקה קריטית: האם הנתונים הם באמת רשימה?
+        if (!Array.isArray(data)) {
+            console.error("Expected array but got:", data);
+            list.innerHTML = "שגיאה: המידע שהתקבל אינו תקין";
+            return;
+        }
+        
+        list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
+        
+        data.forEach(msg => {
+            list.innerHTML += `
+                <div class="msg-item">
+                    <span class="msg-text">${msg.text}</span>
+                    <button class="del-btn" onclick="deleteMessage(${msg.id})">מחק</button>
+                </div>
+            `;
+        });
+        document.getElementById('status').innerText = "";
+    } catch (e) {
+        console.error("Fetch error:", e);
+        list.innerHTML = "שגיאת טעינה. נסה לרענן.";
+        document.getElementById('status').innerText = "שגיאה";
+    }
+}
         const data = await res.json();
         
         list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
@@ -95,6 +121,7 @@
     </script>
 </body>
 </html>
+
 
 
 
