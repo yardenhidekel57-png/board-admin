@@ -36,7 +36,7 @@
 
         async function loadMessages() {
             try {
-                const res = await fetch(SCRIPT_URL);
+               const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
                 const data = await res.json();
                 const list = document.getElementById('messagesList');
                 list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
@@ -88,3 +88,4 @@
     </script>
 </body>
 </html>
+
