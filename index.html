@@ -13,7 +13,7 @@
         .msg-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; gap: 10px; }
         .msg-text { flex: 1; font-size: 14px; color: #334155; }
         .del-btn { background: #ef4444; width: auto; padding: 5px 10px; font-size: 12px; margin: 0; }
-        #status { text-align: center; font-weight: bold; margin-bottom: 10px; }
+        #status { text-align: center; font-weight: bold; margin-bottom: 10px; min-height: 20px; }
     </style>
 </head>
 <body>
@@ -32,74 +32,52 @@
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRkk7x_2EbkzPbfwobm_6pkOa7MkPrO1wLbra16MhG3tcXctjy5hYANA0jo3IS4kM/exec'; // שים לב להחליף לקישור שלך
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRkk7x_2EbkzPbfwobm_6pkOa7MkPrO1wLbra16MhG3tcXctjy5hYANA0jo3IS4kM/exec';
 
-   async function loadMessages() {
-    const list = document.getElementById('messagesList');
-    try {
-        const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
-        
-        // בדיקה אם התקבלה תשובה תקינה
-        if (!res.ok) throw new Error('Network error');
-        
-        const data = await res.json();
-        
-        // בדיקה קריטית: האם הנתונים הם באמת רשימה?
-        if (!Array.isArray(data)) {
-            console.error("Expected array but got:", data);
-            list.innerHTML = "שגיאה: המידע שהתקבל אינו תקין";
-            return;
+        async function loadMessages() {
+            const list = document.getElementById('messagesList');
+            const statusDiv = document.getElementById('status');
+            try {
+                const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
+                if (!res.ok) throw new Error('Network error');
+                
+                const data = await res.json();
+                
+                if (!Array.isArray(data)) {
+                    list.innerHTML = "שגיאה: המבנה שהתקבל אינו תקין";
+                    return;
+                }
+                
+                list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
+                
+                data.forEach(msg => {
+                    list.innerHTML += `
+                        <div class="msg-item">
+                            <span class="msg-text">${msg.text}</span>
+                            <button class="del-btn" onclick="deleteMessage(${msg.id})">מחק</button>
+                        </div>
+                    `;
+                });
+                statusDiv.innerText = "";
+            } catch (e) {
+                console.error("Fetch error:", e);
+                list.innerHTML = "שגיאת טעינה. וודא שביצעת Deployment כ-Anyone.";
+                statusDiv.innerText = "שגיאה";
+            }
         }
-        
-        list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
-        
-        data.forEach(msg => {
-            list.innerHTML += `
-                <div class="msg-item">
-                    <span class="msg-text">${msg.text}</span>
-                    <button class="del-btn" onclick="deleteMessage(${msg.id})">מחק</button>
-                </div>
-            `;
-        });
-        document.getElementById('status').innerText = "";
-    } catch (e) {
-        console.error("Fetch error:", e);
-        list.innerHTML = "שגיאת טעינה. נסה לרענן.";
-        document.getElementById('status').innerText = "שגיאה";
-    }
-}
-        const data = await res.json();
-        
-        list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
-        
-        data.forEach(msg => {
-            list.innerHTML += `
-                <div class="msg-item">
-                    <span class="msg-text">${msg.text}</span>
-                    <button class="del-btn" onclick="deleteMessage(${msg.id})">מחק</button>
-                </div>
-            `;
-        });
-        document.getElementById('status').innerText = "";
-    } catch (e) {
-        // אם יש שגיאה, ננסה להציג אותה כדי להבין מה קורה
-        console.error(e);
-        list.innerHTML = "שגיאה בחיבור לנתונים. וודא שהקישור תקין.";
-        document.getElementById('status').innerText = "שגיאת תקשורת";
-    }
-}
+
         async function sendUpdate() {
             const text = document.getElementById('msgInput').value;
             if(!text) return;
             await apiCall({ type: 'message', text: text });
             document.getElementById('msgInput').value = "";
-            loadMessages();
+            setTimeout(loadMessages, 1500); // המתנה קלה לעדכון גוגל
         }
 
         async function deleteMessage(id) {
             if(!confirm("למחוק הודעה זו?")) return;
             await apiCall({ type: 'delete_row', rowId: id });
-            loadMessages();
+            setTimeout(loadMessages, 1500);
         }
 
         async function apiCall(payload) {
@@ -110,18 +88,13 @@
                     mode: 'no-cors',
                     body: JSON.stringify(payload)
                 });
-                document.getElementById('status').innerText = "עודכן!";
-                setTimeout(() => document.getElementById('status').innerText = "", 2000);
+                document.getElementById('status').innerText = "הבקשה נשלחה!";
             } catch (e) {
                 alert("שגיאה בתקשורת");
             }
         }
 
-        loadMessages(); // טעינה ראשונית
+        loadMessages();
     </script>
 </body>
 </html>
-
-
-
-
