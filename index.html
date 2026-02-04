@@ -3,99 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ניהול לוח מודעות</title>
+    <title>ניהול לוח</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 15px; margin: 0; }
+        body { font-family: sans-serif; background: #f0f2f5; padding: 15px; text-align: center; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2 { color: #1e3a8a; margin: 0 0 15px 0; font-size: 20px; }
         textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #0ea5e9; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .msg-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; gap: 10px; }
-        .msg-text { flex: 1; font-size: 14px; color: #334155; }
-        .del-btn { background: #ef4444; width: auto; padding: 5px 10px; font-size: 12px; margin: 0; }
-        #status { text-align: center; font-weight: bold; margin-bottom: 10px; min-height: 20px; }
+        button { width: 100%; padding: 12px; background: #0ea5e9; color: white; border: none; border-radius: 8px; font-size: 16px; margin-top: 10px; cursor: pointer; }
+        .msg-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
+        .del-btn { background: #ef4444; padding: 5px; font-size: 12px; width: auto; }
     </style>
 </head>
 <body>
-
-    <div id="status">טוען נתונים...</div>
-
+    <div id="status" style="margin-bottom:10px; font-weight:bold;">טוען...</div>
     <div class="card">
-        <h2>📢 הודעה חדשה</h2>
-        <textarea id="msgInput" rows="3" placeholder="הקלד הודעה..."></textarea>
-        <button onclick="sendUpdate()">שלח ללוח</button>
+        <textarea id="msgInput" placeholder="הודעה חדשה..."></textarea>
+        <button onclick="sendUpdate()">שלח</button>
     </div>
-
     <div class="card">
-        <h2>📝 הודעות פעילות</h2>
-        <div id="messagesList">טוען הודעות...</div>
+        <h3>הודעות פעילות:</h3>
+        <div id="messagesList"></div>
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRkk7x_2EbkzPbfwobm_6pkOa7MkPrO1wLbra16MhG3tcXctjy5hYANA0jo3IS4kM/exec?v=1';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxRkk7x_2EbkzPbfwobm_6pkOa7MkPrO1wLbra16MhG3tcXctjy5hYANA0jo3IS4kM/exec';
 
         async function loadMessages() {
-            const list = document.getElementById('messagesList');
-            const statusDiv = document.getElementById('status');
             try {
-                const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
-                if (!res.ok) throw new Error('Network error');
+                // שימוש ב-mode: 'cors' ובדיקה מקיפה
+                const response = await fetch(SCRIPT_URL + '?action=read&t=' + Date.now());
+                const data = await response.json();
                 
-                const data = await res.json();
+                const list = document.getElementById('messagesList');
+                list.innerHTML = "";
                 
-                if (!Array.isArray(data)) {
-                    list.innerHTML = "שגיאה: המבנה שהתקבל אינו תקין";
-                    return;
-                }
-                
-                list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
-                
-                data.forEach(msg => {
-                    list.innerHTML += `
-                        <div class="msg-item">
-                            <span class="msg-text">${msg.text}</span>
+                if (Array.isArray(data)) {
+                    data.forEach(msg => {
+                        list.innerHTML += `<div class="msg-item">
+                            <span>${msg.text}</span>
                             <button class="del-btn" onclick="deleteMessage(${msg.id})">מחק</button>
-                        </div>
-                    `;
-                });
-                statusDiv.innerText = "";
+                        </div>`;
+                    });
+                    if(data.length === 0) list.innerHTML = "אין הודעות";
+                }
+                document.getElementById('status').innerText = "מחובר ללוח ✅";
             } catch (e) {
-                console.error("Fetch error:", e);
-                list.innerHTML = "שגיאת טעינה. וודא שביצעת Deployment כ-Anyone.";
-                statusDiv.innerText = "שגיאה";
+                document.getElementById('status').innerText = "שגיאת חיבור ❌";
+                console.error(e);
             }
         }
 
         async function sendUpdate() {
             const text = document.getElementById('msgInput').value;
             if(!text) return;
-            await apiCall({ type: 'message', text: text });
+            document.getElementById('status').innerText = "שולח...";
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ type: 'message', text: text })
+            });
             document.getElementById('msgInput').value = "";
-            setTimeout(loadMessages, 1500); // המתנה קלה לעדכון גוגל
+            setTimeout(loadMessages, 2000);
         }
 
         async function deleteMessage(id) {
-            if(!confirm("למחוק הודעה זו?")) return;
-            await apiCall({ type: 'delete_row', rowId: id });
-            setTimeout(loadMessages, 1500);
-        }
-
-        async function apiCall(payload) {
-            document.getElementById('status').innerText = "מעדכן...";
-            try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify(payload)
-                });
-                document.getElementById('status').innerText = "הבקשה נשלחה!";
-            } catch (e) {
-                alert("שגיאה בתקשורת");
-            }
+            if(!confirm("למחוק?")) return;
+            document.getElementById('status').innerText = "מוחק...";
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ type: 'delete_row', rowId: id })
+            });
+            setTimeout(loadMessages, 2000);
         }
 
         loadMessages();
     </script>
 </body>
 </html>
-
