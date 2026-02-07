@@ -9,17 +9,17 @@
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h2 { color: #1e3a8a; margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
         textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; resize: none; background: #f9fafb; outline: none; }
-        button { width: 100%; padding: 14px; background: #0ea5e9; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; -webkit-tap-highlight-color: transparent; }
+        button { width: 100%; padding: 14px; background: #0ea5e9; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: opacity 0.2s; }
         button:active { opacity: 0.8; }
         .msg-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; gap: 10px; }
         .msg-text { flex: 1; font-size: 15px; color: #334155; line-height: 1.4; word-break: break-word; }
         .del-btn { background: #ef4444; width: auto; padding: 6px 12px; font-size: 13px; margin: 0; border-radius: 8px; border: none; color: white; cursor: pointer; }
-        #status { text-align: center; font-weight: bold; margin-bottom: 10px; min-height: 20px; font-size: 14px; transition: all 0.3s; }
+        #status { text-align: center; font-weight: bold; margin-bottom: 10px; min-height: 20px; font-size: 14px; }
     </style>
 </head>
 <body>
 
-    <div id="status">מתחבר למערכת...</div>
+    <div id="status">מתחבר...</div>
 
     <div class="card">
         <h2>📢 הודעה חדשה</h2>
@@ -33,24 +33,20 @@
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzKSVymjlEcmg5QqYZMVVhOuAqv6SbJzBDLM1MCaWyqMBT8AA_ZQZpTBz6Fyqzy3n3/exec';
+        // הכתובת החדשה והמעודכנת שלך
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7aZKHovQpZPU4MoJL_2zNQkr2D52MVT571CXGN8ZcjNb5V0R1hZKRhhYZGmmJa05L/exec';
 
         async function loadMessages() {
             const list = document.getElementById('messagesList');
             const statusDiv = document.getElementById('status');
             
             try {
-                // משיכת נתונים עם מנגנון מניעת Cache
-                const res = await fetch(`${SCRIPT_URL}?t=${Date.now()}`);
-                if (!res.ok) throw new Error('Network error');
+                const res = await fetch(SCRIPT_URL + '?t=' + Date.now(), { redirect: 'follow' });
+                const text = await res.text(); // קריאה כטקסט פשוט כדי לעקוף חסימות אבטחה בטלפון
+                const data = JSON.parse(text); // הפיכה ל-JSON בתוך הקוד
                 
-                const data = await res.json();
+                list.innerHTML = data.length ? '' : 'אין הודעות בלוח';
                 
-                if (!Array.isArray(data)) throw new Error('Format error');
-                
-                list.innerHTML = data.length ? '' : 'אין הודעות פעילות בלוח';
-                
-                // הצגה מהחדש לישן
                 [...data].reverse().forEach(msg => {
                     if(msg.text) {
                         const div = document.createElement('div');
@@ -63,25 +59,27 @@
                     }
                 });
                 
-                statusDiv.innerText = "מחובר ומסונכרן ✅";
+                statusDiv.innerText = "מחובר ✅";
                 statusDiv.style.color = "green";
             } catch (e) {
                 console.error("Load error:", e);
                 statusDiv.innerText = "שגיאת תקשורת ❌";
-                statusDiv.style.color = "red";
-                list.innerHTML = "חלה שגיאה בטעינת הנתונים. וודא שהגיליון פתוח לשיתוף.";
+                list.innerHTML = "חלה שגיאה בטעינה. וודא שגירסת הסקריפט מעודכנת.";
             }
         }
 
         async function sendUpdate() {
             const input = document.getElementById('msgInput');
-            const text = input.value.trim();
-            if(!text) return;
+            if(!input.value.trim()) return;
             
-            document.getElementById('status').innerText = "מעדכן...";
-            await apiCall({ type: 'message', text: text });
+            document.getElementById('status').innerText = "שולח...";
+            await fetch(SCRIPT_URL, { 
+                method: 'POST', 
+                mode: 'no-cors', 
+                body: JSON.stringify({ type: 'message', text: input.value }) 
+            });
+            
             input.value = "";
-            
             setTimeout(loadMessages, 1500);
         }
 
@@ -89,24 +87,13 @@
             if(!confirm("למחוק את ההודעה?")) return;
             
             document.getElementById('status').innerText = "מוחק...";
-            await apiCall({ type: 'delete_row', rowId: id });
+            await fetch(SCRIPT_URL, { 
+                method: 'POST', 
+                mode: 'no-cors', 
+                body: JSON.stringify({ type: 'delete_row', rowId: id }) 
+            });
             
             setTimeout(loadMessages, 1500);
-        }
-
-        async function apiCall(payload) {
-            try {
-                // שליחה ב-no-cors כדי למנוע חסימות דפדפן
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify(payload)
-                });
-                document.getElementById('status').innerText = "הפעולה בוצעה ✅";
-            } catch (e) {
-                console.error("API error:", e);
-                alert("שגיאה בשליחת המידע");
-            }
         }
 
         loadMessages();
