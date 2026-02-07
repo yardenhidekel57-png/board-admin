@@ -8,18 +8,19 @@
         body { font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; padding: 15px; margin: 0; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h2 { color: #1e3a8a; margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
-        textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; resize: none; background: #f9fafb; }
-        button { width: 100%; padding: 14px; background: #0ea5e9; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: opacity 0.2s; }
-        button:active { opacity: 0.8; }
+        textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; resize: none; background: #f9fafb; outline: none; }
+        textarea:focus { border-color: #0ea5e9; }
+        button { width: 100%; padding: 14px; background: #0ea5e9; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s; -webkit-tap-highlight-color: transparent; }
+        button:active { background: #0284c7; }
         .msg-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; gap: 10px; background: white; }
-        .msg-text { flex: 1; font-size: 15px; color: #334155; line-height: 1.4; }
+        .msg-text { flex: 1; font-size: 15px; color: #334155; line-height: 1.4; word-break: break-word; }
         .del-btn { background: #ef4444; width: auto; padding: 6px 12px; font-size: 13px; margin: 0; white-space: nowrap; }
         #status { text-align: center; font-weight: bold; margin-bottom: 10px; min-height: 20px; color: #64748b; font-size: 14px; }
     </style>
 </head>
 <body>
 
-    <div id="status">מתחבר ללוח...</div>
+    <div id="status">מתחבר לשרת גוגל...</div>
 
     <div class="card">
         <h2>📢 הודעה חדשה</h2>
@@ -29,11 +30,10 @@
 
     <div class="card">
         <h2>📝 הודעות פעילות</h2>
-        <div id="messagesList">טוען הודעות...</div>
+        <div id="messagesList">טוען נתונים...</div>
     </div>
 
     <script>
-        // הכתובת המעודכנת שלך
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyKGlA-MgV-ByWGKVSm0qw93cifm8K_jhNBzrqFpvJW5qW0PF2TWW7_S9vIRBfrT6hn/exec';
 
         async function loadMessages() {
@@ -41,42 +41,44 @@
             const statusDiv = document.getElementById('status');
             
             try {
-                // הוספנו מנגנון טיפול בהפניות (redirect) ו-Cache
-                const res = await fetch(SCRIPT_URL + '?t=' + Date.now(), {
+                // שימוש ב-fetch עם הגדרות עקיפת Cache והפניות
+                const response = await fetch(`${SCRIPT_URL}?t=${Date.now()}`, {
                     method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
                     redirect: 'follow'
                 });
                 
-                if (!res.ok) throw new Error('Network error');
+                if (!response.ok) throw new Error('Network error');
                 
-                const data = await res.json();
+                const data = await response.json();
                 
                 if (!Array.isArray(data)) {
-                    console.error("Data received is not an array:", data);
-                    list.innerHTML = "<div style='color:red;'>שגיאה: המידע התקבל בפורמט לא תקין. וודא שביצעת Deployment כ-Anyone.</div>";
-                    return;
+                    throw new Error('Data is not an array');
                 }
                 
                 list.innerHTML = data.length ? '' : 'אין הודעות פעילות בלוח';
                 
-                // הפיכת הסדר כך שהחדשות יהיו למעלה
+                // הצגה מהחדש לישן
                 [...data].reverse().forEach(msg => {
                     if(msg.text) {
-                        list.innerHTML += `
-                            <div class="msg-item">
-                                <span class="msg-text">${msg.text}</span>
-                                <button class="del-btn" onclick="deleteMessage(${msg.id})">מחק</button>
-                            </div>
+                        const div = document.createElement('div');
+                        div.className = 'msg-item';
+                        div.innerHTML = `
+                            <span class="msg-text">${msg.text}</span>
+                            <button class="del-btn" onclick="deleteMessage(${msg.id})">מחק</button>
                         `;
+                        list.appendChild(div);
                     }
                 });
+                
                 statusDiv.innerText = "מחובר ומעודכן ✅";
                 statusDiv.style.color = "green";
             } catch (e) {
-                console.error("Fetch error:", e);
-                list.innerHTML = "שגיאת טעינה. נסה לרענן את הדף.";
-                statusDiv.innerText = "שגיאת התחברות ❌";
+                console.error("Load Error:", e);
+                statusDiv.innerText = "שגיאת פורמט מגוגל ❌";
                 statusDiv.style.color = "red";
+                list.innerHTML = "<div style='text-align:center; padding:10px;'>חלה שגיאה בטעינה.<br>וודא שהסקריפט מוגדר כ-Anyone ב-Deployment.</div>";
             }
         }
 
@@ -85,38 +87,39 @@
             const text = input.value.trim();
             if(!text) return;
             
-            document.getElementById('status').innerText = "שולח הודעה...";
+            document.getElementById('status').innerText = "מעדכן את הלוח...";
             await apiCall({ type: 'message', text: text });
             input.value = "";
             
-            // המתנה של 2 שניות לרענון
-            setTimeout(loadMessages, 2000);
+            setTimeout(loadMessages, 1500);
         }
 
         async function deleteMessage(id) {
-            if(!confirm("האם למחוק את ההודעה מהלוח?")) return;
+            if(!confirm("למחוק את ההודעה?")) return;
             
             document.getElementById('status').innerText = "מוחק הודעה...";
             await apiCall({ type: 'delete_row', rowId: id });
             
-            setTimeout(loadMessages, 2000);
+            setTimeout(loadMessages, 1500);
         }
 
         async function apiCall(payload) {
             try {
-                // שימוש ב-no-cors לשליחה בטוחה
+                // שליחה ב-no-cors כדי לעקוף חסימות דפדפן בשליחת נתונים
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors', 
+                    cache: 'no-cache',
                     body: JSON.stringify(payload)
                 });
+                document.getElementById('status').innerText = "עודכן בהצלחה ✅";
             } catch (e) {
                 console.error("API Error:", e);
-                alert("חלה שגיאה בתקשורת");
+                alert("חלה שגיאה בתקשורת עם השרת");
             }
         }
 
-        // טעינה ראשונית
+        // הפעלה ראשונית
         loadMessages();
     </script>
 </body>
