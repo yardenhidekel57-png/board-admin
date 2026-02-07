@@ -9,53 +9,44 @@
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h2 { color: #1e3a8a; margin: 0 0 15px 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
         textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; resize: none; background: #f9fafb; outline: none; }
-        textarea:focus { border-color: #0ea5e9; }
-        button { width: 100%; padding: 14px; background: #0ea5e9; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: background 0.2s; -webkit-tap-highlight-color: transparent; }
-        button:active { background: #0284c7; }
-        .msg-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; gap: 10px; background: white; }
+        button { width: 100%; padding: 14px; background: #0ea5e9; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; -webkit-tap-highlight-color: transparent; }
+        button:active { opacity: 0.8; }
+        .msg-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; gap: 10px; }
         .msg-text { flex: 1; font-size: 15px; color: #334155; line-height: 1.4; word-break: break-word; }
-        .del-btn { background: #ef4444; width: auto; padding: 6px 12px; font-size: 13px; margin: 0; white-space: nowrap; }
-        #status { text-align: center; font-weight: bold; margin-bottom: 10px; min-height: 20px; color: #64748b; font-size: 14px; }
+        .del-btn { background: #ef4444; width: auto; padding: 6px 12px; font-size: 13px; margin: 0; border-radius: 8px; border: none; color: white; cursor: pointer; }
+        #status { text-align: center; font-weight: bold; margin-bottom: 10px; min-height: 20px; font-size: 14px; transition: all 0.3s; }
     </style>
 </head>
 <body>
 
-    <div id="status">מתחבר לשרת גוגל...</div>
+    <div id="status">מתחבר למערכת...</div>
 
     <div class="card">
         <h2>📢 הודעה חדשה</h2>
-        <textarea id="msgInput" rows="3" placeholder="מה תרצו לכתוב בלוח?"></textarea>
+        <textarea id="msgInput" rows="3" placeholder="הקלד הודעה ללוח..."></textarea>
         <button onclick="sendUpdate()">שלח ללוח</button>
     </div>
 
     <div class="card">
         <h2>📝 הודעות פעילות</h2>
-        <div id="messagesList">טוען נתונים...</div>
+        <div id="messagesList">טוען הודעות...</div>
     </div>
 
     <script>
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyKGlA-MgV-ByWGKVSm0qw93cifm8K_jhNBzrqFpvJW5qW0PF2TWW7_S9vIRBfrT6hn/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzKSVymjlEcmg5QqYZMVVhOuAqv6SbJzBDLM1MCaWyqMBT8AA_ZQZpTBz6Fyqzy3n3/exec';
 
         async function loadMessages() {
             const list = document.getElementById('messagesList');
             const statusDiv = document.getElementById('status');
             
             try {
-                // שימוש ב-fetch עם הגדרות עקיפת Cache והפניות
-                const response = await fetch(`${SCRIPT_URL}?t=${Date.now()}`, {
-                    method: 'GET',
-                    mode: 'cors',
-                    credentials: 'omit',
-                    redirect: 'follow'
-                });
+                // משיכת נתונים עם מנגנון מניעת Cache
+                const res = await fetch(`${SCRIPT_URL}?t=${Date.now()}`);
+                if (!res.ok) throw new Error('Network error');
                 
-                if (!response.ok) throw new Error('Network error');
+                const data = await res.json();
                 
-                const data = await response.json();
-                
-                if (!Array.isArray(data)) {
-                    throw new Error('Data is not an array');
-                }
+                if (!Array.isArray(data)) throw new Error('Format error');
                 
                 list.innerHTML = data.length ? '' : 'אין הודעות פעילות בלוח';
                 
@@ -72,13 +63,13 @@
                     }
                 });
                 
-                statusDiv.innerText = "מחובר ומעודכן ✅";
+                statusDiv.innerText = "מחובר ומסונכרן ✅";
                 statusDiv.style.color = "green";
             } catch (e) {
-                console.error("Load Error:", e);
-                statusDiv.innerText = "שגיאת פורמט מגוגל ❌";
+                console.error("Load error:", e);
+                statusDiv.innerText = "שגיאת תקשורת ❌";
                 statusDiv.style.color = "red";
-                list.innerHTML = "<div style='text-align:center; padding:10px;'>חלה שגיאה בטעינה.<br>וודא שהסקריפט מוגדר כ-Anyone ב-Deployment.</div>";
+                list.innerHTML = "חלה שגיאה בטעינת הנתונים. וודא שהגיליון פתוח לשיתוף.";
             }
         }
 
@@ -87,7 +78,7 @@
             const text = input.value.trim();
             if(!text) return;
             
-            document.getElementById('status').innerText = "מעדכן את הלוח...";
+            document.getElementById('status').innerText = "מעדכן...";
             await apiCall({ type: 'message', text: text });
             input.value = "";
             
@@ -97,7 +88,7 @@
         async function deleteMessage(id) {
             if(!confirm("למחוק את ההודעה?")) return;
             
-            document.getElementById('status').innerText = "מוחק הודעה...";
+            document.getElementById('status').innerText = "מוחק...";
             await apiCall({ type: 'delete_row', rowId: id });
             
             setTimeout(loadMessages, 1500);
@@ -105,21 +96,19 @@
 
         async function apiCall(payload) {
             try {
-                // שליחה ב-no-cors כדי לעקוף חסימות דפדפן בשליחת נתונים
+                // שליחה ב-no-cors כדי למנוע חסימות דפדפן
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors', 
-                    cache: 'no-cache',
+                    mode: 'no-cors',
                     body: JSON.stringify(payload)
                 });
-                document.getElementById('status').innerText = "עודכן בהצלחה ✅";
+                document.getElementById('status').innerText = "הפעולה בוצעה ✅";
             } catch (e) {
-                console.error("API Error:", e);
-                alert("חלה שגיאה בתקשורת עם השרת");
+                console.error("API error:", e);
+                alert("שגיאה בשליחת המידע");
             }
         }
 
-        // הפעלה ראשונית
         loadMessages();
     </script>
 </body>
