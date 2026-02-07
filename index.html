@@ -33,6 +33,7 @@
     </div>
 
     <script>
+        // הכתובת המעודכנת שלך
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyKGlA-MgV-ByWGKVSm0qw93cifm8K_jhNBzrqFpvJW5qW0PF2TWW7_S9vIRBfrT6hn/exec';
 
         async function loadMessages() {
@@ -40,19 +41,26 @@
             const statusDiv = document.getElementById('status');
             
             try {
-                const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
+                // הוספנו מנגנון טיפול בהפניות (redirect) ו-Cache
+                const res = await fetch(SCRIPT_URL + '?t=' + Date.now(), {
+                    method: 'GET',
+                    redirect: 'follow'
+                });
+                
                 if (!res.ok) throw new Error('Network error');
                 
                 const data = await res.json();
                 
                 if (!Array.isArray(data)) {
-                    list.innerHTML = "<div style='color:red;'>שגיאה: המבנה שהתקבל מגוגל אינו תקין.</div>";
+                    console.error("Data received is not an array:", data);
+                    list.innerHTML = "<div style='color:red;'>שגיאה: המידע התקבל בפורמט לא תקין. וודא שביצעת Deployment כ-Anyone.</div>";
                     return;
                 }
                 
                 list.innerHTML = data.length ? '' : 'אין הודעות פעילות בלוח';
                 
-                data.reverse().forEach(msg => {
+                // הפיכת הסדר כך שהחדשות יהיו למעלה
+                [...data].reverse().forEach(msg => {
                     if(msg.text) {
                         list.innerHTML += `
                             <div class="msg-item">
@@ -66,7 +74,7 @@
                 statusDiv.style.color = "green";
             } catch (e) {
                 console.error("Fetch error:", e);
-                list.innerHTML = "שגיאת טעינה.";
+                list.innerHTML = "שגיאת טעינה. נסה לרענן את הדף.";
                 statusDiv.innerText = "שגיאת התחברות ❌";
                 statusDiv.style.color = "red";
             }
@@ -81,7 +89,8 @@
             await apiCall({ type: 'message', text: text });
             input.value = "";
             
-            setTimeout(loadMessages, 1500);
+            // המתנה של 2 שניות לרענון
+            setTimeout(loadMessages, 2000);
         }
 
         async function deleteMessage(id) {
@@ -90,11 +99,12 @@
             document.getElementById('status').innerText = "מוחק הודעה...";
             await apiCall({ type: 'delete_row', rowId: id });
             
-            setTimeout(loadMessages, 1500);
+            setTimeout(loadMessages, 2000);
         }
 
         async function apiCall(payload) {
             try {
+                // שימוש ב-no-cors לשליחה בטוחה
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors', 
@@ -102,9 +112,11 @@
                 });
             } catch (e) {
                 console.error("API Error:", e);
+                alert("חלה שגיאה בתקשורת");
             }
         }
 
+        // טעינה ראשונית
         loadMessages();
     </script>
 </body>
